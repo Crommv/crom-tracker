@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crom Commission Tracker</title>
+
+<!-- ╔══════════════════════════════════════════════════╗
+     ║  STEP 1: Replace the firebaseConfig block below  ║
+     ║  with YOUR project's values from Firebase Console║
+     ╚══════════════════════════════════════════════════╝ -->
+
+<style>
+/* ── TOKENS ─────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080810;--surface:#10101e;--card:#16162a;--card2:#1c1c34;
+  --border:#252545;--border2:#2e2e55;
+  --accent:#6d28d9;--accent2:#8b5cf6;--accent3:#a78bfa;
+  --glow:rgba(109,40,217,.4);--glow2:rgba(109,40,217,.15);
+  --cyan:#22d3ee;--cyan-dim:rgba(34,211,238,.12);
+  --green:#4ade80;--green-dim:rgba(74,222,128,.12);
+  --yellow:#fbbf24;--yellow-dim:rgba(251,191,36,.12);
+  --red:#f87171;--red-dim:rgba(248,113,113,.12);
+  --muted:#5b6078;--text:#dde1f0;--text2:#9399b5;
+  --r:12px;--rs:8px;--font:'Segoe UI',system-ui,sans-serif;
+  --mono:'Consolas',monospace;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);
+  min-height:100vh;padding-bottom:80px;
+  background-image:radial-gradient(ellipse 70% 40% at 50% -5%,rgba(109,40,217,.2) 0%,transparent 70%)}
+
+/* ── HEADER ─────────────────────────────────────────── */
+header{text-align:center;padding:44px 20px 28px;position:relative}
+.eyebrow{font-size:.7rem;letter-spacing:3px;text-transform:uppercase;
+  color:var(--accent3);margin-bottom:10px;font-family:var(--mono)}
+h1{font-size:clamp(1.8rem,5vw,3rem);font-weight:900;letter-spacing:-1px;
+  background:linear-gradient(135deg,#fff 0%,var(--accent3) 50%,var(--cyan) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px}
+.sub{color:var(--text2);font-size:.88rem}
+.hline{width:80px;height:2px;background:linear-gradient(90deg,transparent,var(--accent2),transparent);
+  margin:16px auto 0}
+
+/* ── STATS ───────────────────────────────────────────── */
+.stats{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;padding:0 20px 28px}
+.stat{display:flex;align-items:center;gap:10px;background:var(--surface);
+  border:1px solid var(--border);border-radius:50px;padding:7px 18px 7px 12px;
+  font-size:.8rem;color:var(--text2)}
+.sv{font-weight:800;font-size:1.05rem}
+.s-t .sv{color:var(--accent3)}.s-a .sv{color:var(--yellow)}
+.s-d .sv{color:var(--green)}.s-u .sv{color:var(--red)}
+
+/* ── NAV TABS ────────────────────────────────────────── */
+.tabs{display:flex;justify-content:center;gap:8px;padding:0 20px 24px}
+.tab{background:var(--surface);border:1px solid var(--border);border-radius:50px;
+  color:var(--text2);padding:8px 22px;font-size:.82rem;cursor:pointer;
+  transition:all .2s;font-family:var(--font)}
+.tab:hover,.tab.on{background:var(--glow2);border-color:var(--accent2);color:var(--accent3)}
+.tab.on{font-weight:700}
+
+/* ── PANELS ──────────────────────────────────────────── */
+.view{display:none;max-width:1380px;margin:0 auto;padding:0 18px}
+.view.on{display:block}
+
+/* Admin split layout */
+.admin-layout{display:grid;gap:20px}
+@media(min-width:960px){.admin-layout{grid-template-columns:360px 1fr;align-items:start}}
+
+.panel{background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:22px}
+.phd{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.phd-txt{font-size:.7rem;font-weight:800;letter-spacing:2px;
+  text-transform:uppercase;color:var(--accent3)}
+.phd::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── FORM ────────────────────────────────────────────── */
+.fr{margin-bottom:13px}
+.fr label{display:block;font-size:.75rem;color:var(--text2);margin-bottom:5px}
+.fr input,.fr select,.fr textarea{
+  width:100%;background:var(--card);border:1px solid var(--border2);
+  border-radius:var(--rs);color:var(--text);padding:10px 13px;
+  font-size:.88rem;font-family:var(--font);outline:none;
+  transition:border-color .2s,box-shadow .2s;-webkit-appearance:none}
+.fr input:focus,.fr select:focus,.fr textarea:focus{
+  border-color:var(--accent2);box-shadow:0 0 0 3px var(--glow2)}
+.fr select option{background:var(--card2)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+.dl-prev{background:var(--card);border:1px dashed var(--border2);border-radius:var(--rs);
+  padding:10px 14px;font-size:.8rem;color:var(--text2);min-height:40px;
+  display:flex;align-items:center;gap:6px;margin-bottom:14px}
+.dl-prev b{color:var(--cyan)}
+
+.btn{width:100%;padding:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border:none;border-radius:var(--rs);color:#fff;font-weight:800;font-size:.92rem;
+  letter-spacing:.5px;cursor:pointer;box-shadow:0 0 24px var(--glow);
+  transition:opacity .2s,transform .15s,box-shadow .2s;font-family:var(--font)}
+.btn:hover{opacity:.9;transform:translateY(-1px);box-shadow:0 0 36px var(--glow)}
+.btn:active{transform:translateY(0)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+/* SLA editor */
+.sla-toggle{display:block;margin-top:18px;background:none;border:none;
+  color:var(--accent3);font-size:.76rem;cursor:pointer;font-family:var(--font);
+  text-decoration:underline dotted;padding:0}
+.sla-wrap{display:none;margin-top:12px}
+.sla-wrap.open{display:block}
+.sla-row{display:flex;align-items:center;gap:8px;padding:6px 0;
+  border-bottom:1px solid var(--border);font-size:.78rem}
+.sla-row:last-child{border-bottom:none}
+.sla-nm{flex:1;color:var(--text2)}
+.sla-in{width:54px;padding:4px 8px;font-size:.78rem;text-align:center}
+.sla-u{color:var(--muted);font-size:.73rem;width:28px}
+
+/* ── TOOLBAR ─────────────────────────────────────────── */
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.flt{background:var(--card);border:1px solid var(--border);border-radius:50px;
+  color:var(--text2);padding:5px 14px;font-size:.76rem;cursor:pointer;
+  transition:all .2s;font-family:var(--font)}
+.flt:hover,.flt.on{border-color:var(--accent2);color:var(--accent3);background:var(--glow2)}
+.srch{margin-left:auto;background:var(--card);border:1px solid var(--border2);
+  border-radius:var(--rs);color:var(--text);padding:6px 12px;font-size:.8rem;
+  font-family:var(--font);outline:none;width:170px;transition:border-color .2s}
+.srch:focus{border-color:var(--accent2)}
+.vbtns{display:flex;gap:5px}
+.vb{background:var(--card);border:1px solid var(--border);border-radius:var(--rs);
+  color:var(--text2);padding:5px 11px;font-size:.85rem;cursor:pointer;
+  transition:all .2s;font-family:var(--font)}
+.vb.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* ── KANBAN ──────────────────────────────────────────── */
+.kanban{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+.kcol{background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);padding:14px;min-height:100px}
+.kchd{display:flex;align-items:center;gap:8px;margin-bottom:12px;
+  font-size:.72rem;font-weight:800;letter-spacing:1.2px;text-transform:uppercase}
+.kdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.kct{margin-left:auto;background:var(--border);border-radius:50px;
+  padding:1px 8px;font-size:.7rem;color:var(--muted)}
+.kem{color:var(--muted);font-size:.76rem;padding:6px 0}
+
+/* ── CARD ────────────────────────────────────────────── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);
+  padding:13px;margin-bottom:10px;transition:border-color .2s,box-shadow .2s,opacity .2s}
+.card:hover{border-color:var(--accent2);box-shadow:0 0 14px var(--glow)}
+.card.p-High{border-left:3px solid var(--red);box-shadow:-2px 0 12px rgba(248,113,113,.25)}
+.card.p-Normal{border-left:3px solid var(--yellow)}
+.card.p-Low{border-left:3px solid var(--cyan)}
+.card.cancelled{opacity:.4;filter:grayscale(.6)}
+.card.cancelled .cn{text-decoration:line-through;color:var(--muted)}
+.card.overdue{background:rgba(248,113,113,.04)}
+
+.cn{font-weight:700;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+.cc{font-size:.75rem;color:var(--text2);margin-bottom:8px}
+.cbadges{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px}
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:.66rem;font-weight:700;
+  padding:2px 8px;border-radius:50px;white-space:nowrap}
+.b-svc{border:1px solid var(--accent);color:var(--accent3);background:var(--glow2)}
+.b-H{border:1px solid rgba(248,113,113,.5);color:var(--red);background:var(--red-dim);box-shadow:0 0 8px rgba(248,113,113,.25)}
+.b-N{border:1px solid rgba(251,191,36,.4);color:var(--yellow);background:var(--yellow-dim)}
+.b-L{border:1px solid rgba(34,211,238,.4);color:var(--cyan);background:var(--cyan-dim)}
+.b-ok{border:1px solid rgba(74,222,128,.35);color:var(--green);background:var(--green-dim)}
+.b-soon{border:1px solid rgba(251,191,36,.4);color:var(--yellow);background:var(--yellow-dim)}
+.b-urg{border:1px solid rgba(248,113,113,.4);color:var(--red);background:var(--red-dim)}
+.b-done{border:1px solid var(--border);color:var(--muted);background:transparent}
+.cdates{font-size:.73rem;color:var(--text2);margin-bottom:10px;line-height:1.7}
+.cdates b{color:var(--text)}
+.cact{display:flex;gap:6px}
+.ssel{flex:1;background:var(--card2);border:1px solid var(--border2);border-radius:6px;
+  color:var(--text);padding:5px 8px;font-size:.73rem;font-family:var(--font);
+  outline:none;cursor:pointer}
+.ssel:focus{border-color:var(--accent2)}
+.bdel{background:var(--red-dim);border:1px solid rgba(248,113,113,.3);border-radius:6px;
+  color:var(--red);padding:5px 10px;font-size:.73rem;cursor:pointer;
+  transition:background .2s;font-family:var(--font)}
+.bdel:hover{background:rgba(248,113,113,.3)}
+
+/* ── TABLE ───────────────────────────────────────────── */
+.twrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.81rem}
+th{text-align:left;padding:9px 12px;color:var(--muted);font-size:.7rem;
+  letter-spacing:.8px;text-transform:uppercase;border-bottom:1px solid var(--border);
+  white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:var(--accent3)}
+td{padding:10px 12px;border-bottom:1px solid rgba(37,37,69,.7);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(109,40,217,.05)}
+tr.cancelled td{opacity:.45}
+tr.cancelled .tdn{text-decoration:line-through;color:var(--muted)}
+.tdn{font-weight:600;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tda{display:flex;gap:6px}
+
+/* ── PUBLIC WAITLIST ─────────────────────────────────── */
+.wl-grid{display:grid;gap:16px}
+@media(min-width:700px){.wl-grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:1100px){.wl-grid{grid-template-columns:repeat(3,1fr)}}
+.wl-notice{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:14px 18px;margin-bottom:20px;font-size:.82rem;color:var(--text2);
+  display:flex;align-items:center;gap:10px}
+
+/* ── LOGIN OVERLAY ───────────────────────────────────── */
+#login-overlay{position:fixed;inset:0;background:rgba(8,8,16,.96);
+  display:flex;align-items:center;justify-content:center;z-index:9999;
+  backdrop-filter:blur(8px)}
+.login-box{background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:36px 32px;width:100%;max-width:380px;text-align:center}
+.login-box h2{font-size:1.3rem;font-weight:800;margin-bottom:6px;
+  background:linear-gradient(135deg,#fff,var(--accent3));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.login-box p{color:var(--text2);font-size:.82rem;margin-bottom:22px}
+.login-box input{width:100%;background:var(--card);border:1px solid var(--border2);
+  border-radius:var(--rs);color:var(--text);padding:11px 14px;font-size:.9rem;
+  margin-bottom:12px;outline:none;font-family:var(--font);
+  transition:border-color .2s,box-shadow .2s}
+.login-box input:focus{border-color:var(--accent2);box-shadow:0 0 0 3px var(--glow2)}
+.login-err{color:var(--red);font-size:.78rem;margin-top:8px;min-height:18px}
+
+/* ── EMPTY / LOADING ─────────────────────────────────── */
+.empty{text-align:center;padding:52px 20px;color:var(--muted);font-size:.86rem;grid-column:1/-1}
+.empty-i{font-size:2.8rem;margin-bottom:10px}
+.loading{text-align:center;padding:40px;color:var(--text2);font-size:.88rem}
+.spinner{display:inline-block;width:24px;height:24px;border:3px solid var(--border2);
+  border-top-color:var(--accent2);border-radius:50%;animation:spin .7s linear infinite;
+  margin-bottom:10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── TOAST ───────────────────────────────────────────── */
+.toast{position:fixed;bottom:22px;right:22px;background:var(--surface);
+  border:1px solid var(--accent);border-radius:var(--rs);padding:11px 20px;
+  font-size:.83rem;box-shadow:0 0 24px var(--glow);opacity:0;
+  transform:translateY(10px);transition:all .28s;pointer-events:none;z-index:99999}
+.toast.show{opacity:1;transform:translateY(0)}
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN OVERLAY (Admin only) ────────────────────── -->
+<div id="login-overlay" style="display:none">
+  <div class="login-box">
+    <h2>🔐 Admin Access</h2>
+    <p>Sign in with your admin credentials to manage projects.</p>
+    <input type="email"    id="l-email" placeholder="Email address">
+    <input type="password" id="l-pass"  placeholder="Password">
+    <button class="btn" id="l-btn" onclick="doLogin()">Sign In</button>
+    <div class="login-err" id="l-err"></div>
+  </div>
+</div>
+
+<!-- ── HEADER ────────────────────────────────────────── -->
+<header>
+  <div class="eyebrow">⚡ Commission Dashboard</div>
+  <h1>Crom Commission Tracker</h1>
+  <p class="sub">Live project queue — updated in real time</p>
+  <div class="hline"></div>
+</header>
+
+<!-- ── STATS ─────────────────────────────────────────── -->
+<div class="stats" id="stats">
+  <div class="stat s-t"><span>📁</span><span class="sv" id="st-total">–</span> Total</div>
+  <div class="stat s-a"><span>⚡</span><span class="sv" id="st-active">–</span> In Progress</div>
+  <div class="stat s-d"><span>✅</span><span class="sv" id="st-done">–</span> Done</div>
+  <div class="stat s-u"><span>🔥</span><span class="sv" id="st-urgent">–</span> Urgent</div>
+</div>
+
+<!-- ── TABS ──────────────────────────────────────────── -->
+<div class="tabs">
+  <button class="tab on" onclick="switchTab('public',this)">📋 Waitlist</button>
+  <button class="tab"    onclick="switchTab('admin',this)" id="admin-tab">⚙ Admin</button>
+</div>
+
+<!-- ══ PUBLIC WAITLIST VIEW ══════════════════════════════ -->
+<div class="view on" id="view-public">
+  <div class="panel">
+    <div class="phd"><span class="phd-txt">✦ Current Queue</span></div>
+    <div class="wl-notice">
+      ℹ️ This is a live, read-only view of current commissions. Completed and cancelled projects are hidden.
+    </div>
+    <div id="public-loading" class="loading">
+      <div class="spinner"></div><br>Loading queue…
+    </div>
+    <div class="wl-grid" id="public-grid"></div>
+  </div>
+</div>
+
+<!-- ══ ADMIN VIEW ════════════════════════════════════════ -->
+<div class="view" id="view-admin">
+  <div id="admin-loading" class="loading" style="display:none">
+    <div class="spinner"></div><br>Loading projects…
+  </div>
+  <div id="admin-content" style="display:none">
+    <div class="admin-layout">
+
+      <!-- FORM -->
+      <aside class="panel">
+        <div class="phd"><span class="phd-txt">✦ New Project</span></div>
+        <div class="fr"><label>Project Name</label>
+          <input type="text" id="f-name" placeholder="e.g. Neon City Intro"></div>
+        <div class="fr"><label>Client Name</label>
+          <input type="text" id="f-client" placeholder="e.g. Astra Studios"></div>
+        <div class="fr"><label>Service Type</label>
+          <select id="f-service"></select></div>
+        <div class="form-grid">
+          <div class="fr"><label>Start Date</label>
+            <input type="date" id="f-start"></div>
+          <div class="fr"><label>Priority</label>
+            <select id="f-priority">
+              <option value="High">🔴 High</option>
+              <option value="Normal" selected>🟡 Normal</option>
+              <option value="Low">🔵 Low</option>
+            </select></div>
+        </div>
+        <div class="dl-prev" id="dl-prev">📅 Select service &amp; date to preview deadline</div>
+        <button class="btn" id="add-btn" onclick="addProject()">＋ Add Project</button>
+
+        <button class="sla-toggle" onclick="toggleSLA()">⚙ Edit SLA Turnaround Times</button>
+        <div class="sla-wrap" id="sla-wrap"></div>
+
+        <button class="btn" style="margin-top:18px;background:rgba(248,113,113,.15);
+          border:1px solid rgba(248,113,113,.3);color:var(--red);box-shadow:none;font-size:.8rem"
+          onclick="doLogout()">Sign Out</button>
+      </aside>
+
+      <!-- DASHBOARD -->
+      <section class="panel">
+        <div class="phd"><span class="phd-txt">✦ All Projects</span></div>
+        <div class="toolbar">
+          <div class="filters" id="adm-filters">
+            <button class="flt on" onclick="setFilter('all',this)">All</button>
+            <button class="flt" onclick="setFilter('Not Started',this)">Not Started</button>
+            <button class="flt" onclick="setFilter('In Progress',this)">In Progress</button>
+            <button class="flt" onclick="setFilter('Done',this)">Done</button>
+            <button class="flt" onclick="setFilter('Cancelled',this)">Cancelled</button>
+          </div>
+          <div class="vbtns">
+            <button class="vb on" onclick="setView('kanban',this)" title="Kanban">⊞</button>
+            <button class="vb"    onclick="setView('table',this)"  title="Table">☰</button>
+          </div>
+          <input class="srch" id="adm-search" type="text" placeholder="🔍 Search…" oninput="renderAdmin()">
+        </div>
+        <div id="kanban-view"></div>
+        <div id="table-view" style="display:none" class="twrap"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ══ FIREBASE SDK (v9 compat) ═══════════════════════════ -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  🔧 FIREBASE CONFIG — Replace with YOUR values
+//     Firebase Console → Project Settings → Your Apps
+// ════════════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId:         "YOUR_PROJECT_ID",
+  storageBucket:     "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId:             "YOUR_APP_ID"
+};
+
+// ════════════════════════════════════════════════════════
+//  🔧 ADMIN PASSWORD — Change this to your own password
+//     This is compared against Firebase Auth password
+// ════════════════════════════════════════════════════════
+// Authentication is handled by Firebase Auth.
+// Create a user in Firebase Console → Authentication → Add User
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+const col  = db.collection("projects"); // Firestore collection name
+
+// ════════════════════════════════════════════════════════
+//  SLA CONFIG
+// ════════════════════════════════════════════════════════
+const SLA = {
+  "Debut Trailer / Teaser":   9,
+  "Loading Screen Animation": 10,
+  "Logo Animation":           7,
+  "Logo Design":              7,
+  "Lore Video":               15,
+  "MV Tier 1":                10,
+  "MV Tier 2":                20,
+  "Stinger Transition":       8,
+  "Stream Overlay Package":   14
+};
+
+const STATUSES  = ["Not Started","In Progress","Done","Cancelled"];
+const COL_CFG   = {
+  "Not Started": {dot:"#5b6078"},
+  "In Progress":  {dot:"#fbbf24"},
+  "Done":         {dot:"#4ade80"},
+  "Cancelled":    {dot:"#374151"}
+};
+const PRIO_RANK = {High:0,Normal:1,Low:2};
+
+// ════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════
+let projects    = [];       // cache from Firestore
+let filter      = "all";
+let viewMode    = "kanban";
+let sortKey     = "createdAt";
+let sortAsc     = true;
+let currentUser = null;
+let unsubscribe = null;     // Firestore listener handle
+
+// ════════════════════════════════════════════════════════
+//  AUTH
+// ════════════════════════════════════════════════════════
+auth.onAuthStateChanged(user => {
+  currentUser = user;
+  if (user) {
+    // Logged in: show full admin UI
+    document.getElementById("login-overlay").style.display = "none";
+    document.getElementById("admin-content").style.display = "block";
+    document.getElementById("admin-loading").style.display = "none";
+    subscribeFirestore(); // start real-time listener
+  }
+});
+
+function doLogin() {
+  const email = document.getElementById("l-email").value.trim();
+  const pass  = document.getElementById("l-pass").value;
+  const btn   = document.getElementById("l-btn");
+  const err   = document.getElementById("l-err");
+  err.textContent = "";
+  btn.disabled    = true;
+  btn.textContent = "Signing in…";
+  auth.signInWithEmailAndPassword(email, pass)
+    .catch(e => {
+      err.textContent = "❌ " + (e.code === "auth/invalid-credential"
+        ? "Wrong email or password." : e.message);
+      btn.disabled    = false;
+      btn.textContent = "Sign In";
+    });
+}
+
+function doLogout() {
+  auth.signOut().then(() => {
+    if (unsubscribe) unsubscribe();
+    projects = [];
+    switchTab("public", document.querySelector(".tab"));
+    toast("👋 Signed out.");
+  });
+}
+
+// Show login overlay when admin tab is clicked and not signed in
+function requireAdmin() {
+  if (!currentUser) {
+    document.getElementById("login-overlay").style.display = "flex";
+    return false;
+  }
+  return true;
+}
+
+// ════════════════════════════════════════════════════════
+//  FIRESTORE — real-time listener
+// ════════════════════════════════════════════════════════
+function subscribeFirestore() {
+  if (unsubscribe) unsubscribe(); // detach any old listener
+  unsubscribe = col.orderBy("createdAt", "desc").onSnapshot(snap => {
+    projects = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderAdmin();
+    renderPublic();
+    renderStats();
+  }, err => {
+    console.error("Firestore error:", err);
+    toast("⚠ Firestore error — check console.", "var(--red)");
+  });
+}
+
+// Also load public view on page load (no auth needed)
+// Use a one-time get for anonymous visitors
+function loadPublic() {
+  col.where("status","not-in",["Done","Cancelled"])
+     .orderBy("createdAt","desc")
+     .get()
+     .then(snap => {
+       const pub = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+       renderPublicCards(pub);
+       updateStats(pub, true);
+       document.getElementById("public-loading").style.display = "none";
+     })
+     .catch(() => {
+       document.getElementById("public-loading").innerHTML =
+         "<span style='color:var(--red)'>⚠ Could not load queue. Check Firestore rules.</span>";
+     });
+}
+
+// ════════════════════════════════════════════════════════
+//  FIRESTORE CRUD
+// ════════════════════════════════════════════════════════
+async function addProject() {
+  if (!requireAdmin()) return;
+  const name     = document.getElementById("f-name").value.trim();
+  const client   = document.getElementById("f-client").value.trim();
+  const service  = document.getElementById("f-service").value;
+  const start    = document.getElementById("f-start").value;
+  const priority = document.getElementById("f-priority").value;
+  if (!name || !client || !service || !start) {
+    toast("⚠ Fill in all fields.", "var(--yellow)"); return;
+  }
+  const days     = SLA[service];
+  const deadline = addDays(start, days);
+  const btn      = document.getElementById("add-btn");
+  btn.disabled   = true; btn.textContent = "Saving…";
+  try {
+    await col.add({ name, client, service, start, deadline, days, priority,
+      status: "Not Started", createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    toast("✅ Project added!");
+    ["f-name","f-client"].forEach(id => document.getElementById(id).value = "");
+    document.getElementById("dl-prev").innerHTML =
+      "📅 Select service &amp; date to preview deadline";
+  } catch(e) {
+    toast("❌ Save failed: " + e.message, "var(--red)");
+  } finally {
+    btn.disabled = false; btn.textContent = "＋ Add Project";
+  }
+}
+
+async function changeStatus(id, status) {
+  try { await col.doc(id).update({ status }); }
+  catch(e) { toast("❌ Update failed.", "var(--red)"); }
+}
+
+async function deleteProject(id) {
+  if (!confirm("Delete this project? Cannot be undone.")) return;
+  try {
+    await col.doc(id).delete();
+    toast("🗑 Deleted.", "var(--red)");
+  } catch(e) { toast("❌ Delete failed.", "var(--red)"); }
+}
+
+// ════════════════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════════════════
+function addDays(ds, n) {
+  const d = new Date(ds + "T00:00:00");
+  d.setDate(d.getDate() + parseInt(n));
+  return d.toISOString().slice(0, 10);
+}
+function fmt(ds) {
+  if (!ds) return "—";
+  const [y,m,d] = ds.split("-");
+  const mo = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return `${mo[+m-1]} ${+d}, ${y}`;
+}
+function daysLeft(ds) {
+  const now = new Date(); now.setHours(0,0,0,0);
+  return Math.round((new Date(ds+"T00:00:00") - now) / 86400000);
+}
+function dlBadge(ds, status) {
+  if (["Done","Cancelled"].includes(status))
+    return `<span class="badge b-done">✓ ${status}</span>`;
+  const d = daysLeft(ds);
+  if (d < 0)  return `<span class="badge b-urg">🔥 ${Math.abs(d)}d overdue</span>`;
+  if (d <= 3) return `<span class="badge b-urg">⚠ ${d}d left</span>`;
+  if (d <= 7) return `<span class="badge b-soon">⏳ ${d}d left</span>`;
+  return              `<span class="badge b-ok">✓ ${d}d left</span>`;
+}
+function prioBadge(p) {
+  const m = {High:"🔴 High",Normal:"🟡 Normal",Low:"🔵 Low"};
+  const c = {High:"b-H",Normal:"b-N",Low:"b-L"};
+  return `<span class="badge ${c[p]}">${m[p]||p}</span>`;
+}
+function esc(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function statusSel(p) {
+  const opts = STATUSES.map(s =>
+    `<option value="${s}" ${p.status===s?"selected":""}>${s}</option>`
+  ).join("");
+  return `<select class="ssel" onchange="changeStatus('${p.id}',this.value)">${opts}</select>`;
+}
+function cardCls(p) {
+  return ["card",`p-${p.priority}`,
+    p.status==="Cancelled"?"cancelled":"",
+    p.status!=="Done"&&p.status!=="Cancelled"&&daysLeft(p.deadline)<0?"overdue":""
+  ].filter(Boolean).join(" ");
+}
+
+// ════════════════════════════════════════════════════════
+//  STATS
+// ════════════════════════════════════════════════════════
+function renderStats() { updateStats(projects, false); }
+function updateStats(arr, pubOnly) {
+  const total  = arr.length;
+  const active = arr.filter(p=>p.status==="In Progress").length;
+  const done   = arr.filter(p=>p.status==="Done").length;
+  const urgent = arr.filter(p=>
+    !["Done","Cancelled"].includes(p.status) && daysLeft(p.deadline||"9999-12-31")<=3
+  ).length;
+  document.getElementById("st-total").textContent  = total;
+  document.getElementById("st-active").textContent = active;
+  document.getElementById("st-done").textContent   = done;
+  document.getElementById("st-urgent").textContent = urgent;
+}
+
+// ════════════════════════════════════════════════════════
+//  PUBLIC VIEW
+// ════════════════════════════════════════════════════════
+function renderPublic() {
+  const pub = projects.filter(p=>!["Done","Cancelled"].includes(p.status));
+  renderPublicCards(pub);
+  document.getElementById("public-loading").style.display = "none";
+}
+function renderPublicCards(arr) {
+  const grid = document.getElementById("public-grid");
+  if (!arr.length) {
+    grid.innerHTML = `<div class="empty"><div class="empty-i">🎉</div>
+      No active commissions right now. DM to get in queue!</div>`; return;
+  }
+  grid.innerHTML = arr.map(p => {
+    const pRank = PRIO_RANK[p.priority]??1;
+    return `
+    <div class="${cardCls(p)}">
+      <div class="cn" title="${esc(p.name)}">${esc(p.name)}</div>
+      <div class="cc">👤 ${esc(p.client)}</div>
+      <div class="cbadges">
+        <span class="badge b-svc">${esc(p.service)}</span>
+        ${prioBadge(p.priority)}
+        ${dlBadge(p.deadline, p.status)}
+      </div>
+      <div class="cdates">
+        <b>Start:</b> ${fmt(p.start)}<br>
+        <b>Est. Deadline:</b> ${fmt(p.deadline)}
+      </div>
+      <div style="font-size:.72rem;color:var(--text2);margin-top:4px">
+        Status: <b style="color:var(--text)">${p.status}</b>
+      </div>
+    </div>`; }).join("");
+}
+
+// ════════════════════════════════════════════════════════
+//  ADMIN — KANBAN
+// ════════════════════════════════════════════════════════
+function getVisible() {
+  const q = (document.getElementById("adm-search")?.value||"").toLowerCase();
+  return projects.filter(p => {
+    const mf = filter==="all" || p.status===filter;
+    const mq = !q || p.name.toLowerCase().includes(q)
+                  || p.client.toLowerCase().includes(q)
+                  || p.service.toLowerCase().includes(q);
+    return mf && mq;
+  });
+}
+
+function renderAdmin() {
+  if (!currentUser) return;
+  const vis = getVisible();
+  if (viewMode==="kanban") renderKanban(vis);
+  else renderTable(vis);
+}
+
+function renderKanban(vis) {
+  const wrap = document.getElementById("kanban-view");
+  if (!vis.length) {
+    wrap.innerHTML = `<div class="empty"><div class="empty-i">📭</div>No projects found.</div>`; return;
+  }
+  const cols = STATUSES.map(status => {
+    const cards = vis.filter(p=>p.status===status)
+      .sort((a,b)=>(PRIO_RANK[a.priority]??1)-(PRIO_RANK[b.priority]??1));
+    const cfg = COL_CFG[status];
+    return `<div class="kcol">
+      <div class="kchd">
+        <span class="kdot" style="background:${cfg.dot};box-shadow:0 0 6px ${cfg.dot}90"></span>
+        ${status}<span class="kct">${cards.length}</span>
+      </div>
+      ${cards.length ? cards.map(p=>`
+        <div class="${cardCls(p)}">
+          <div class="cn" title="${esc(p.name)}">${esc(p.name)}</div>
+          <div class="cc">👤 ${esc(p.client)}</div>
+          <div class="cbadges">
+            <span class="badge b-svc">${esc(p.service)}</span>
+            ${prioBadge(p.priority)}${dlBadge(p.deadline,p.status)}
+          </div>
+          <div class="cdates"><b>Start:</b> ${fmt(p.start)}<br>
+            <b>Deadline:</b> ${fmt(p.deadline)}</div>
+          <div class="cact">${statusSel(p)}
+            <button class="bdel" onclick="deleteProject('${p.id}')">✕</button>
+          </div>
+        </div>`).join("")
+      : `<div class="kem">No projects</div>`}
+    </div>`;
+  });
+  wrap.innerHTML = `<div class="kanban">${cols.join("")}</div>`;
+}
+
+function renderTable(vis) {
+  const wrap = document.getElementById("table-view");
+  if (!vis.length) {
+    wrap.innerHTML = `<div class="empty"><div class="empty-i">📭</div>No projects found.</div>`; return;
+  }
+  const sa = k => sortKey===k ? (sortAsc?"↑":"↓") : "↕";
+  const th = (l,k) => `<th onclick="tblSort('${k}')">${l} <span style="opacity:.5">${sa(k)}</span></th>`;
+  const rows = [...vis].sort((a,b)=>{
+    let va=a[sortKey]??"", vb=b[sortKey]??"";
+    if(typeof va==="string") va=va.toLowerCase();
+    if(typeof vb==="string") vb=vb.toLowerCase();
+    return sortAsc?(va>vb?1:-1):(va<vb?1:-1);
+  }).map(p=>`
+    <tr class="${p.status==="Cancelled"?"cancelled":""}">
+      <td class="tdn" title="${esc(p.name)}">${esc(p.name)}</td>
+      <td>${esc(p.client)}</td>
+      <td><span class="badge b-svc" style="font-size:.67rem">${esc(p.service)}</span></td>
+      <td>${prioBadge(p.priority)}</td>
+      <td>${fmt(p.start)}</td>
+      <td>${fmt(p.deadline)}</td>
+      <td>${dlBadge(p.deadline,p.status)}</td>
+      <td><div class="tda">${statusSel(p)}
+        <button class="bdel" onclick="deleteProject('${p.id}')">✕</button>
+      </div></td>
+    </tr>`).join("");
+  wrap.innerHTML = `<table><thead><tr>
+    ${th("Project","name")}${th("Client","client")}
+    ${th("Service","service")}${th("Priority","priority")}
+    ${th("Start","start")}${th("Deadline","deadline")}
+    <th>Due</th><th>Actions</th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function tblSort(k) {
+  sortKey===k ? (sortAsc=!sortAsc) : (sortKey=k, sortAsc=true);
+  renderAdmin();
+}
+
+// ════════════════════════════════════════════════════════
+//  TABS / VIEW TOGGLE / FILTER
+// ════════════════════════════════════════════════════════
+function switchTab(name, btn) {
+  if (name==="admin" && !currentUser) {
+    document.getElementById("login-overlay").style.display = "flex"; return;
+  }
+  document.querySelectorAll(".tab").forEach(b=>b.classList.remove("on"));
+  btn.classList.add("on");
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("on"));
+  document.getElementById("view-"+name).classList.add("on");
+  if (name==="public") renderPublic();
+}
+function setFilter(f, btn) {
+  filter = f;
+  document.querySelectorAll("#adm-filters .flt").forEach(b=>b.classList.remove("on"));
+  btn.classList.add("on");
+  renderAdmin();
+}
+function setView(v, btn) {
+  viewMode = v;
+  document.querySelectorAll(".vb").forEach(b=>b.classList.remove("on"));
+  btn.classList.add("on");
+  document.getElementById("kanban-view").style.display = v==="kanban"?"":"none";
+  document.getElementById("table-view").style.display  = v==="table" ?"":"none";
+  renderAdmin();
+}
+
+// ════════════════════════════════════════════════════════
+//  FORM HELPERS
+// ════════════════════════════════════════════════════════
+function buildServiceDD() {
+  document.getElementById("f-service").innerHTML =
+    Object.keys(SLA).map(s=>`<option value="${s}">${s} (${SLA[s]}d)</option>`).join("");
+}
+function updatePreview() {
+  const svc  = document.getElementById("f-service")?.value;
+  const st   = document.getElementById("f-start")?.value;
+  const el   = document.getElementById("dl-prev");
+  if (!el) return;
+  if (svc && st) {
+    const dl = addDays(st, SLA[svc]);
+    el.innerHTML = `📅 Estimated deadline: <b>${fmt(dl)}</b> <span style="color:var(--muted);font-size:.75rem">(+${SLA[svc]} days)</span>`;
+  } else {
+    el.innerHTML = "📅 Select service &amp; date to preview deadline";
+  }
+}
+document.getElementById("f-service").addEventListener("change", updatePreview);
+document.getElementById("f-start").addEventListener("change",   updatePreview);
+
+function toggleSLA() { document.getElementById("sla-wrap").classList.toggle("open"); }
+function buildSLAEditor() {
+  document.getElementById("sla-wrap").innerHTML =
+    Object.keys(SLA).map(s=>`
+      <div class="sla-row">
+        <span class="sla-nm">${s}</span>
+        <input class="sla-in fr" type="number" min="1" max="365"
+          value="${SLA[s]}" onchange="SLA['${s}']=parseInt(this.value)||SLA['${s}'];buildServiceDD()">
+        <span class="sla-u">days</span>
+      </div>`).join("");
+}
+
+// ════════════════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════════════════
+let toastT;
+function toast(msg, color="var(--accent2)") {
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.style.borderColor = color;
+  el.classList.add("show");
+  clearTimeout(toastT);
+  toastT = setTimeout(()=>el.classList.remove("show"), 2800);
+}
+
+// ════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════
+buildServiceDD();
+buildSLAEditor();
+document.getElementById("f-start").value = new Date().toISOString().slice(0,10);
+loadPublic(); // Load public queue immediately, no auth needed
+</script>
+</body>
+</html>
